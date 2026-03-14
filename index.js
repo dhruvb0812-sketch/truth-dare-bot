@@ -20,7 +20,7 @@ const chatId = msg.chat.id;
 if(msg.chat.type === "private"){
 
 bot.sendPhoto(chatId,
-"https://i.imgur.com/2yaf2wb.jpeg",
+"https://in.pinterest.com/pin/anime-dpz-for-boys--590112357445192539/",
 {
 caption:
 `🤖 *Ultimate Truth & Dare Wheel Bot*
