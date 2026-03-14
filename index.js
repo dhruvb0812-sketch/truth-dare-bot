@@ -36,7 +36,7 @@ parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[
 [
-{text:"👑 Owner",url:https://t.me/@akz_sovereign}
+{text:"👑 Owner",url:OWNER}
 ],
 [
 {text:"➕ Add To Your Group",
