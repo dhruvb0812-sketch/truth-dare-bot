@@ -230,7 +230,7 @@ bot.sendAnimation(chatId,
 
 setTimeout(async()=>{
 
-const wheel=await generateWheel(players);
+const wheel=await generateWheel(players,bot);
 
 bot.sendPhoto(chatId,wheel,{
 caption:`🎡 *WHEEL RESULT*
