@@ -38,13 +38,13 @@ caption:`🤖 *ULTIMATE TRUTH & DARE BOT*
 
 🎡 Spin the wheel  
 👥 Add players  
-🏆 Random turns`,
+🏆 Random turns
 ━━━━━━━━━━━━━━
 *How To Play*
 
-1️⃣ Add the bot to your group  
-2️⃣ Type /run  
-3️⃣ Players click Add Me  
+1️⃣ Add the bot to your group
+2️⃣ Type /run
+3️⃣ Players click Add Me
 4️⃣ Admin spins the wheel 🎡
 
 Let the chaos begin 😈`,
