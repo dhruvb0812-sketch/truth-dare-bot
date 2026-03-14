@@ -15,46 +15,44 @@ async function isAdmin(chatId, userId) {
 }
 
 bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
 
-  if (msg.chat.type === "private") {
-    bot.sendPhoto(
-      chatId,
-      fs.createReadStream("./images/welcome.jpg"),
-      {
-        caption: `✨ *WELCOME TO THE ULTIMATE TRUTH & DARE BOT* ✨
+const chatId = msg.chat.id;
+
+bot.sendPhoto(
+chatId,
+fs.createReadStream("./images/welcome.jpg"),
+{
+caption:`✨ *WELCOME TO THE ULTIMATE TRUTH & DARE BOT* ✨
 
 🎡 Spin the wheel and let fate decide  
 👥 Add your friends to the game  
 🏆 Random player selector  
 
-🔥 Perfect for group fun & challenges!
-
 ━━━━━━━━━━━━━━
 *How To Play*
 
-1️⃣ Add the bot to your group  
-2️⃣ Type */run* to start game  
-3️⃣ Players click *Add Me*  
+1️⃣ Add bot to your group  
+2️⃣ Type /run  
+3️⃣ Players click Add Me  
 4️⃣ Admin spins the wheel 🎡
 
 Let the chaos begin 😈`,
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "👑 Owner", url: OWNER }],
-            [
-              {
-                text: "➕ Add To Your Group",
-                url: `https://t.me/${BOT_USERNAME}?startgroup=true`,
-              },
-            ],
-            [{ text: "🎮 How To Play", callback_data: "help" }],
-          ],
-        },
-      }
-    );
-  }
+parse_mode:"Markdown",
+reply_markup:{
+inline_keyboard:[
+[
+{text:"👑 Owner",url:OWNER}
+],
+[
+{text:"➕ Add To Your Group",
+url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
+],
+[
+{text:"🎮 How To Play",callback_data:"help"}
+]
+]
+}
+});
 });
 
 bot.onText(/\/run/, (msg) => {
