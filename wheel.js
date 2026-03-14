@@ -1,15 +1,12 @@
 const { createCanvas } = require("canvas");
 
-async function generateWheel(players){
+async function generateWheel(players) {
 
 const size = 800;
-
 const canvas = createCanvas(size,size);
-
 const ctx = canvas.getContext("2d");
 
 const center = size/2;
-
 const radius = size/2;
 
 const angle = (2*Math.PI)/players.length;
@@ -17,7 +14,6 @@ const angle = (2*Math.PI)/players.length;
 players.forEach((p,i)=>{
 
 const start = i*angle;
-
 const end = start+angle;
 
 ctx.beginPath();
