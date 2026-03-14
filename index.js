@@ -1,4 +1,5 @@
 const TelegramBot = require("node-telegram-bot-api");
+const { generateWheel } = require("./wheel");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN,{polling:true});
 
@@ -31,9 +32,7 @@ caption:
 
 🎡 Spin the wheel  
 👥 Add participants  
-🏆 Random turn selector  
-
-Add this bot to your group and start playing!`,
+🏆 Random turn selector`,
 parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[
@@ -41,7 +40,8 @@ inline_keyboard:[
 {text:"👑 Owner",url:OWNER}
 ],
 [
-{text:"➕ Add To Your Group",url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
+{text:"➕ Add To Your Group",
+url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
 ]
 ]
 }
@@ -84,21 +84,16 @@ inline_keyboard:[
 bot.onText(/\/endgame/,async(msg)=>{
 
 const chatId = msg.chat.id;
-
 const userId = msg.from.id;
 
 if(!games[chatId]){
-
 return bot.sendMessage(chatId,"❌ No game running.");
-
 }
 
 const admin = await isAdmin(chatId,userId);
 
 if(!admin){
-
 return bot.sendMessage(chatId,"⚠ Only admins can end the game.");
-
 }
 
 delete games[chatId];
@@ -110,7 +105,6 @@ bot.sendMessage(chatId,"🛑 Game ended successfully.");
 bot.on("callback_query",async(q)=>{
 
 const chatId = q.message.chat.id;
-
 const user = q.from;
 
 if(!games[chatId]) return;
@@ -121,16 +115,11 @@ if(q.data==="add"){
 
 if(players.find(p=>p.id===user.id)){
 
-return bot.answerCallbackQuery(q.id,{
-text:"⚠ You already joined"
-});
+return bot.answerCallbackQuery(q.id,{text:"⚠ Already joined"});
 
 }
 
-players.push({
-id:user.id,
-name:user.first_name
-});
+players.push({id:user.id,name:user.first_name});
 
 bot.sendMessage(chatId,
 `✅ New participant added
@@ -152,17 +141,13 @@ bot.sendMessage(chatId,
 if(q.data==="list"){
 
 if(players.length===0){
-
 return bot.sendMessage(chatId,"⚠ No participants yet");
-
 }
 
 let text="👥 *Participants*\n\n";
 
 players.forEach((p,i)=>{
-
 text+=`${i+1}. ${p.name}\n`
-
 });
 
 bot.sendMessage(chatId,text,{parse_mode:"Markdown"});
@@ -184,8 +169,7 @@ show_alert:true
 
 if(players.length<2){
 
-return bot.sendMessage(chatId,
-"⚠ Need at least 2 players");
+return bot.sendMessage(chatId,"⚠ Need at least 2 players");
 
 }
 
@@ -195,11 +179,14 @@ players[Math.floor(Math.random()*players.length)];
 bot.sendAnimation(chatId,
 "https://media.giphy.com/media/l4FGuhL4U2WyjdkaY/giphy.gif");
 
-setTimeout(()=>{
+setTimeout(async()=>{
 
-bot.sendMessage(chatId,
-`🎯 *${winner.name}'s Turn*`,
-{parse_mode:"Markdown"});
+const wheel = await generateWheel(players);
+
+bot.sendPhoto(chatId,wheel,{
+caption:`🎯 *${winner.name}'s Turn*`,
+parse_mode:"Markdown"
+});
 
 },3000)
 
