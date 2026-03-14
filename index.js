@@ -1,17 +1,58 @@
 const TelegramBot = require("node-telegram-bot-api");
 const { generateWheel } = require("./wheel");
 const express = require("express");
+const axios = require("axios");
+
+/* ---------------- KEEP ALIVE SERVER ---------------- */
 
 const app = express();
-app.get("/",(req,res)=>res.send("Bot running"));
-app.listen(3000);
 
-const bot = new TelegramBot(process.env.BOT_TOKEN,{polling:true});
+app.get("/", (req,res)=>{
+res.send("Bot Running 🚀");
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT,()=>{
+console.log("Keep alive server running");
+});
+
+/* ---------------- SELF PING SYSTEM ---------------- */
+
+const RENDER_URL = "https://truth-dare-bot-1-5r5d.onrender.com";
+
+setInterval(async ()=>{
+
+try{
+
+const res = await axios.get(RENDER_URL);
+
+console.log("Self ping success:",res.status);
+
+}catch(e){
+
+console.log("Self ping failed");
+
+}
+
+},300000);
+
+/* ---------------- TELEGRAM BOT ---------------- */
+
+const bot = new TelegramBot(process.env.BOT_TOKEN,{
+polling:{
+autoStart:true,
+interval:300,
+params:{timeout:10}
+}
+});
 
 const OWNER="https://t.me/akz_sovereign";
 const BOT_USERNAME="pixel_truth_dare_bot";
 
 let games={};
+
+/* ---------------- UTILITY ---------------- */
 
 async function deleteCommand(msg){
 try{
@@ -20,9 +61,14 @@ await bot.deleteMessage(msg.chat.id,msg.message_id);
 }
 
 async function isAdmin(chatId,userId){
+
 const admins=await bot.getChatAdministrators(chatId);
+
 return admins.some(a=>a.user.id===userId);
+
 }
+
+/* ---------------- START MESSAGE ---------------- */
 
 bot.onText(/\/start/,async(msg)=>{
 
@@ -34,17 +80,17 @@ bot.sendPhoto(chatId,"./images/welcome.jpg",{
 
 caption:`🤖 *ULTIMATE TRUTH & DARE BOT*
 
-🎮 Start fun games in your group
+🎮 Make your group games more fun
 
 🎡 Spin the wheel  
 👥 Add players  
 🏆 Random turns
-━━━━━━━━━━━━━━
+  ━━━━━━━━━━━━━━
 *How To Play*
 
-1️⃣ Add the bot to your group
-2️⃣ Type /run
-3️⃣ Players click Add Me
+1️⃣ Add the bot to your group  
+2️⃣ Type /run  
+3️⃣ Players click Add Me  
 4️⃣ Admin spins the wheel 🎡
 
 Let the chaos begin 😈`,
@@ -67,11 +113,17 @@ inline_keyboard:[
 
 });
 
+/* ---------------- RUN GAME ---------------- */
+
 bot.onText(/\/run/,async(msg)=>{
 
 await deleteCommand(msg);
 
 const chatId=msg.chat.id;
+
+if(games[chatId]){
+return bot.sendMessage(chatId,"⚠ Game already running");
+}
 
 games[chatId]={participants:[]};
 
@@ -100,6 +152,8 @@ inline_keyboard:[
 });
 
 });
+
+/* ---------------- CONTROL PANEL ---------------- */
 
 bot.onText(/\/insight/,async(msg)=>{
 
@@ -133,6 +187,8 @@ inline_keyboard:[
 
 });
 
+/* ---------------- END GAME ---------------- */
+
 bot.onText(/\/endgame/,async(msg)=>{
 
 await deleteCommand(msg);
@@ -156,7 +212,11 @@ bot.sendMessage(chatId,"🛑 Game ended");
 
 });
 
+/* ---------------- BUTTON SYSTEM ---------------- */
+
 bot.on("callback_query",async(q)=>{
+
+bot.answerCallbackQuery(q.id);
 
 const chatId=q.message.chat.id;
 const user=q.from;
@@ -165,21 +225,28 @@ if(!games[chatId]) return;
 
 let players=games[chatId].participants;
 
+/* JOIN */
+
 if(q.data==="add"){
 
 if(players.find(p=>p.id===user.id)){
-return bot.answerCallbackQuery(q.id,{text:"Already joined"});
+return;
 }
 
-players.push({id:user.id,name:user.first_name});
+players.push({
+id:user.id,
+name:user.first_name
+});
 
 bot.sendMessage(chatId,
-`⚡ *${user.first_name} joined the game*
+`⚡ *${user.first_name} joined the arena*
 
 👥 Players: ${players.length}`,
 {parse_mode:"Markdown"});
 
 }
+
+/* LEAVE */
 
 if(q.data==="remove"){
 
@@ -191,6 +258,8 @@ bot.sendMessage(chatId,
 
 }
 
+/* LIST */
+
 if(q.data==="list"){
 
 if(players.length===0){
@@ -200,12 +269,14 @@ return bot.sendMessage(chatId,"⚠ No players yet");
 let text="👥 *PLAYERS*\n\n";
 
 players.forEach((p,i)=>{
-text+=`${i+1}. ${p.name}\n`
+text+=`${i+1}. ${p.name}\n`;
 });
 
 bot.sendMessage(chatId,text,{parse_mode:"Markdown"});
 
 }
+
+/* SPIN */
 
 if(q.data==="spin"){
 
@@ -241,9 +312,11 @@ Your turn!`,
 parse_mode:"Markdown"
 });
 
-},3000)
+},3000);
 
 }
+
+/* RESTART */
 
 if(q.data==="restart"){
 
@@ -252,6 +325,8 @@ games[chatId]={participants:[]};
 bot.sendMessage(chatId,"🔄 Game restarted");
 
 }
+
+/* FORCE END */
 
 if(q.data==="force_end"){
 
