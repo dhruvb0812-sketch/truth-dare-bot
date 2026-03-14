@@ -3,6 +3,9 @@ const { generateWheel } = require("./wheel");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
+const OWNER = "https://t.me/YOUR_USERNAME";
+const BOT_USERNAME = "YOUR_BOT_USERNAME";
+
 let games = {};
 
 async function isAdmin(chatId, userId) {
@@ -10,19 +13,55 @@ async function isAdmin(chatId, userId) {
   return admins.some(a => a.user.id === userId);
 }
 
-bot.onText(/\/run/, (msg) => {
+bot.onText(/\/start/, (msg) => {
 
-  const chatId = msg.chat.id;
+const chatId = msg.chat.id;
 
-  games[chatId] = {
-    participants: []
-  };
+if(msg.chat.type === "private"){
 
-  bot.sendMessage(chatId,
-`🎯 WELCOME TO TRUTH & DARE BOT
-
-Add participants and spin the wheel`,
+bot.sendPhoto(chatId,
+"https://i.imgur.com/2yaf2wb.jpeg",
 {
+caption:
+`🤖 *Ultimate Truth & Dare Wheel Bot*
+
+This bot makes group games super fun 🎉
+
+🎡 Spin the wheel
+👥 Add participants
+🏆 Random turn selector
+
+Perfect for playing Truth & Dare in Telegram groups!`,
+parse_mode:"Markdown",
+reply_markup:{
+inline_keyboard:[
+[
+{text:"👑 Owner",url:OWNER}
+],
+[
+{text:"➕ Add To Your Group",
+url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
+]
+]
+}
+});
+
+}
+
+});
+
+bot.onText(/\/run/, (msg)=>{
+
+const chatId = msg.chat.id;
+
+games[chatId] = { participants: [] };
+
+bot.sendMessage(chatId,
+`🎯 *WELCOME TO TRUTH & DARE BOT*
+
+Add players and spin the wheel!`,
+{
+parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[
 [
@@ -41,7 +80,30 @@ inline_keyboard:[
 
 });
 
-bot.on("callback_query", async (q) => {
+bot.onText(/\/endgame/, async (msg)=>{
+
+const chatId = msg.chat.id;
+const userId = msg.from.id;
+
+if(!games[chatId]){
+return bot.sendMessage(chatId,"No game running.");
+}
+
+const admin = await isAdmin(chatId,userId);
+
+if(!admin){
+return bot.sendMessage(chatId,
+"Only admins can end the game.");
+}
+
+delete games[chatId];
+
+bot.sendMessage(chatId,
+"🛑 Game ended successfully.");
+
+});
+
+bot.on("callback_query", async (q)=>{
 
 const chatId = q.message.chat.id;
 const user = q.from;
@@ -54,11 +116,10 @@ if(q.data === "add"){
 
 if(players.find(p => p.id === user.id)){
 
-bot.answerCallbackQuery(q.id,{
-text:"Already joined"
+return bot.answerCallbackQuery(q.id,{
+text:"You already joined"
 });
 
-return;
 }
 
 players.push({
@@ -89,13 +150,13 @@ if(players.length === 0){
 return bot.sendMessage(chatId,"No participants yet");
 }
 
-let text = "👥 Participants\n\n";
+let text = "👥 *Participants*\n\n";
 
 players.forEach((p,i)=>{
 text += `${i+1}. ${p.name}\n`
-});
+})
 
-bot.sendMessage(chatId,text);
+bot.sendMessage(chatId,text,{parse_mode:"Markdown"});
 
 }
 
@@ -114,7 +175,7 @@ show_alert:true
 
 if(players.length < 2){
 return bot.sendMessage(chatId,
-"Need at least 2 participants");
+"Need at least 2 players");
 }
 
 const winner =
@@ -128,7 +189,8 @@ setTimeout(async ()=>{
 const wheel = await generateWheel(players);
 
 bot.sendPhoto(chatId,wheel,{
-caption:`🎯 ${winner.name}'s Turn`
+caption:`🎯 *${winner.name}'s Turn*`,
+parse_mode:"Markdown"
 });
 
 },3000)
