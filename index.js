@@ -4,7 +4,7 @@ const { generateWheel } = require("./wheel");
 const bot = new TelegramBot(process.env.BOT_TOKEN,{polling:true});
 
 const OWNER = "https://t.me/@akz_sovereign";
-const BOT_USERNAME = "@pixel_truth_dare_bot";
+const BOT_USERNAME = "pixel_truth_dare_bot";
 
 let games = {};
 
