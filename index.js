@@ -3,38 +3,51 @@ const { generateWheel } = require("./wheel");
 const express = require("express");
 
 const app = express();
-app.get("/", (req,res)=>res.send("Bot Running"));
-app.listen(3000,()=>console.log("Server started"));
+app.get("/",(req,res)=>res.send("Bot running"));
+app.listen(3000);
 
 const bot = new TelegramBot(process.env.BOT_TOKEN,{polling:true});
 
-const OWNER = "https://t.me/akz_sovereign";
-const BOT_USERNAME = "pixel_truth_dare_bot";
+const OWNER="https://t.me/akz_sovereign";
+const BOT_USERNAME="pixel_truth_dare_bot";
 
-let games = {};
+let games={};
+
+async function deleteCommand(msg){
+try{
+await bot.deleteMessage(msg.chat.id,msg.message_id);
+}catch(e){}
+}
 
 async function isAdmin(chatId,userId){
-const admins = await bot.getChatAdministrators(chatId);
+const admins=await bot.getChatAdministrators(chatId);
 return admins.some(a=>a.user.id===userId);
 }
 
-bot.onText(/\/start/, (msg)=>{
+bot.onText(/\/start/,async(msg)=>{
 
-const chatId = msg.chat.id;
+const chatId=msg.chat.id;
 
-if(msg.chat.type === "private"){
+if(msg.chat.type==="private"){
 
 bot.sendPhoto(chatId,"./images/welcome.jpg",{
 
-caption:
-`🤖 *ULTIMATE TRUTH & DARE BOT*
+caption:`🤖 *ULTIMATE TRUTH & DARE BOT*
 
-🎉 Make your group games more fun!
+🎮 Start fun games in your group
 
 🎡 Spin the wheel  
-👥 Add participants  
-🏆 Random turn selector`,
+👥 Add players  
+🏆 Random turns`,
+━━━━━━━━━━━━━━
+*How To Play*
 
+1️⃣ Add the bot to your group  
+2️⃣ Type /run  
+3️⃣ Players click Add Me  
+4️⃣ Admin spins the wheel 🎡
+
+Let the chaos begin 😈`,
 parse_mode:"Markdown",
 
 reply_markup:{
@@ -43,7 +56,7 @@ inline_keyboard:[
 {text:"👑 Owner",url:OWNER}
 ],
 [
-{text:"➕ Add To Your Group",url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
+{text:"➕ Add To Group",url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
 ]
 ]
 }
@@ -54,26 +67,30 @@ inline_keyboard:[
 
 });
 
-bot.onText(/\/run/, (msg)=>{
+bot.onText(/\/run/,async(msg)=>{
 
-const chatId = msg.chat.id;
+await deleteCommand(msg);
 
-games[chatId] = {participants:[]};
+const chatId=msg.chat.id;
+
+games[chatId]={participants:[]};
 
 bot.sendMessage(chatId,
-`🎯 *WELCOME TO TRUTH & DARE BOT*
+`🎮 *GAME STARTED*
 
-Add players and spin the wheel!`,
+Players join the arena!
+
+👇 Tap to join`,
 {
 parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[
 [
-{text:"➕ Add Me",callback_data:"add"},
-{text:"➖ Remove Me",callback_data:"remove"}
+{text:"➕ Join Game",callback_data:"add"},
+{text:"➖ Leave",callback_data:"remove"}
 ],
 [
-{text:"👥 Participants",callback_data:"list"}
+{text:"👥 Players",callback_data:"list"}
 ],
 [
 {text:"🎡 Spin Wheel",callback_data:"spin"}
@@ -84,53 +101,89 @@ inline_keyboard:[
 
 });
 
-bot.onText(/\/endgame/, async(msg)=>{
+bot.onText(/\/insight/,async(msg)=>{
 
-const chatId = msg.chat.id;
-const userId = msg.from.id;
+await deleteCommand(msg);
+
+const chatId=msg.chat.id;
+
+bot.sendMessage(chatId,
+`⚙ *GAME CONTROL PANEL*
+
+Manage the game`,
+{
+parse_mode:"Markdown",
+reply_markup:{
+inline_keyboard:[
+[
+{text:"🎡 Spin",callback_data:"spin"}
+],
+[
+{text:"👥 Players",callback_data:"list"}
+],
+[
+{text:"🔄 Restart Game",callback_data:"restart"}
+],
+[
+{text:"🛑 End Game",callback_data:"force_end"}
+]
+]
+}
+});
+
+});
+
+bot.onText(/\/endgame/,async(msg)=>{
+
+await deleteCommand(msg);
+
+const chatId=msg.chat.id;
+const userId=msg.from.id;
 
 if(!games[chatId]){
-return bot.sendMessage(chatId,"❌ No game running.");
+return bot.sendMessage(chatId,"❌ No game running");
 }
 
-const admin = await isAdmin(chatId,userId);
+const admin=await isAdmin(chatId,userId);
 
 if(!admin){
-return bot.sendMessage(chatId,"⚠ Only admins can end the game.");
+return bot.sendMessage(chatId,"⚠ Admin only command");
 }
 
 delete games[chatId];
 
-bot.sendMessage(chatId,"🛑 Game ended successfully.");
+bot.sendMessage(chatId,"🛑 Game ended");
 
 });
 
-bot.on("callback_query", async(q)=>{
+bot.on("callback_query",async(q)=>{
 
-const chatId = q.message.chat.id;
-const user = q.from;
+const chatId=q.message.chat.id;
+const user=q.from;
 
 if(!games[chatId]) return;
 
-let players = games[chatId].participants;
+let players=games[chatId].participants;
 
 if(q.data==="add"){
 
 if(players.find(p=>p.id===user.id)){
-return bot.answerCallbackQuery(q.id,{text:"⚠ Already joined"});
+return bot.answerCallbackQuery(q.id,{text:"Already joined"});
 }
 
 players.push({id:user.id,name:user.first_name});
 
 bot.sendMessage(chatId,
-`✅ New participant added
-👤 ${user.first_name}`);
+`⚡ *${user.first_name} joined the game*
+
+👥 Players: ${players.length}`,
+{parse_mode:"Markdown"});
 
 }
 
 if(q.data==="remove"){
 
-games[chatId].participants =
+games[chatId].participants=
 players.filter(p=>p.id!==user.id);
 
 bot.sendMessage(chatId,
@@ -141,10 +194,10 @@ bot.sendMessage(chatId,
 if(q.data==="list"){
 
 if(players.length===0){
-return bot.sendMessage(chatId,"⚠ No participants yet");
+return bot.sendMessage(chatId,"⚠ No players yet");
 }
 
-let text="👥 *Participants*\n\n";
+let text="👥 *PLAYERS*\n\n";
 
 players.forEach((p,i)=>{
 text+=`${i+1}. ${p.name}\n`
@@ -156,11 +209,11 @@ bot.sendMessage(chatId,text,{parse_mode:"Markdown"});
 
 if(q.data==="spin"){
 
-const admin = await isAdmin(chatId,user.id);
+const admin=await isAdmin(chatId,user.id);
 
 if(!admin){
 return bot.answerCallbackQuery(q.id,{
-text:"⚠ Only admins can spin",
+text:"Admin only",
 show_alert:true
 });
 }
@@ -169,22 +222,42 @@ if(players.length<2){
 return bot.sendMessage(chatId,"⚠ Need at least 2 players");
 }
 
-const winner =
+const winner=
 players[Math.floor(Math.random()*players.length)];
 
 bot.sendAnimation(chatId,
-"https://media.giphy.com/media/l4FGuhL4U2WyjdkaY/giphy.gif");
+"https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif");
 
 setTimeout(async()=>{
 
-const wheel = await generateWheel(players);
+const wheel=await generateWheel(players);
 
 bot.sendPhoto(chatId,wheel,{
-caption:`🎯 *${winner.name}'s Turn*`,
+caption:`🎡 *WHEEL RESULT*
+
+🔥 *${winner.name}*
+
+Your turn!`,
 parse_mode:"Markdown"
 });
 
 },3000)
+
+}
+
+if(q.data==="restart"){
+
+games[chatId]={participants:[]};
+
+bot.sendMessage(chatId,"🔄 Game restarted");
+
+}
+
+if(q.data==="force_end"){
+
+delete games[chatId];
+
+bot.sendMessage(chatId,"🛑 Game force ended");
 
 }
 
