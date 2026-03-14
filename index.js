@@ -1,7 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const { generateWheel } = require("./wheel");
 const express = require("express");
-const axios = require("axios");
+const https = require("https");
 
 /* ---------------- KEEP ALIVE SERVER ---------------- */
 
@@ -19,24 +19,21 @@ console.log("Keep alive server running");
 
 /* ---------------- SELF PING SYSTEM ---------------- */
 
-const RENDER_URL = "https://truth-dare-bot-1-5r5d.onrender.com";
+const RENDER_URL = "https://truth-dare-bot-1-5r5d.onrender.com/";
 
-setInterval(async ()=>{
+setInterval(()=>{
 
-try{
+https.get(RENDER_URL,(res)=>{
 
-const res = await axios.get(RENDER_URL);
+console.log("Self ping:",res.statusCode);
 
-console.log("Self ping success:",res.status);
+}).on("error",(e)=>{
 
-}catch(e){
+console.log("Ping failed");
 
-console.log("Self ping failed");
-
-}
+});
 
 },300000);
-
 /* ---------------- TELEGRAM BOT ---------------- */
 
 const bot = new TelegramBot(process.env.BOT_TOKEN,{
