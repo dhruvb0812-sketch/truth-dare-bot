@@ -1,17 +1,27 @@
 const TelegramBot = require("node-telegram-bot-api");
+const { generateWheel } = require("./wheel");
 
-const bot = new TelegramBot(process.env.BOT_TOKEN,{polling:true});
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 let games = {};
 
-bot.onText(/\/run/, (msg)=>{
+async function isAdmin(chatId, userId) {
+  const admins = await bot.getChatAdministrators(chatId);
+  return admins.some(a => a.user.id === userId);
+}
 
-const chatId = msg.chat.id;
+bot.onText(/\/run/, (msg) => {
 
-games[chatId] = {participants:[]};
+  const chatId = msg.chat.id;
 
-bot.sendMessage(chatId,
-"🎯 WELCOME TO TRUTH AND DARE BOT\n\nAdd players and spin the wheel!",
+  games[chatId] = {
+    participants: []
+  };
+
+  bot.sendMessage(chatId,
+`🎯 WELCOME TO TRUTH & DARE BOT
+
+Add participants and spin the wheel`,
 {
 reply_markup:{
 inline_keyboard:[
@@ -28,72 +38,101 @@ inline_keyboard:[
 ]
 }
 });
+
 });
 
-bot.on("callback_query",(q)=>{
+bot.on("callback_query", async (q) => {
 
 const chatId = q.message.chat.id;
 const user = q.from;
 
 if(!games[chatId]) return;
 
-let list = games[chatId].participants;
+let players = games[chatId].participants;
 
-if(q.data==="add"){
+if(q.data === "add"){
 
-if(!list.find(p=>p.id===user.id)){
+if(players.find(p => p.id === user.id)){
 
-list.push({id:user.id,name:user.first_name});
+bot.answerCallbackQuery(q.id,{
+text:"Already joined"
+});
+
+return;
+}
+
+players.push({
+id:user.id,
+name:user.first_name
+});
 
 bot.sendMessage(chatId,
-`✅ New participant added\n👤 ${user.first_name}\n🆔 ${user.id}`
-);
+`✅ New participant added
+👤 ${user.first_name}
+🆔 ${user.id}`);
 
 }
 
-}
-
-if(q.data==="remove"){
+if(q.data === "remove"){
 
 games[chatId].participants =
-list.filter(p=>p.id!==user.id);
+players.filter(p => p.id !== user.id);
 
-bot.sendMessage(chatId,"❌ Participant removed");
+bot.sendMessage(chatId,
+`❌ ${user.first_name} left the game`);
 
 }
 
-if(q.data==="list"){
+if(q.data === "list"){
 
-let text="👥 Participants\n\n";
+if(players.length === 0){
+return bot.sendMessage(chatId,"No participants yet");
+}
 
-games[chatId].participants.forEach((p,i)=>{
-text+=`${i+1}. ${p.name}\n`
-})
+let text = "👥 Participants\n\n";
+
+players.forEach((p,i)=>{
+text += `${i+1}. ${p.name}\n`
+});
 
 bot.sendMessage(chatId,text);
 
 }
 
-if(q.data==="spin"){
+if(q.data === "spin"){
 
-let players = games[chatId].participants;
+const admin = await isAdmin(chatId,user.id);
 
-if(players.length<2){
+if(!admin){
 
-return bot.sendMessage(chatId,"Need at least 2 players")
+return bot.answerCallbackQuery(q.id,{
+text:"Only admins can spin",
+show_alert:true
+});
 
 }
 
-const winner = players[Math.floor(Math.random()*players.length)];
+if(players.length < 2){
+return bot.sendMessage(chatId,
+"Need at least 2 participants");
+}
 
-bot.sendAnimation(chatId,"https://media.giphy.com/media/l4FGuhL4U2WyjdkaY/giphy.gif");
+const winner =
+players[Math.floor(Math.random()*players.length)];
 
-setTimeout(()=>{
+bot.sendAnimation(chatId,
+"https://media.giphy.com/media/l4FGuhL4U2WyjdkaY/giphy.gif");
 
-bot.sendMessage(chatId,`🎯 ${winner.name}'s Turn`)
+setTimeout(async ()=>{
+
+const wheel = await generateWheel(players);
+
+bot.sendPhoto(chatId,wheel,{
+caption:`🎯 ${winner.name}'s Turn`
+});
 
 },3000)
 
 }
 
-})
+});
