@@ -1,195 +1,198 @@
 const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
 const { generateWheel } = require("./wheel");
 
-const bot = new TelegramBot(process.env.BOT_TOKEN,{polling:true});
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-const OWNER = "https://t.me/@akz_sovereign";
+const OWNER = "https://t.me/akz_sovereign";
 const BOT_USERNAME = "pixel_truth_dare_bot";
 
 let games = {};
 
-async function isAdmin(chatId,userId){
-
-const admins = await bot.getChatAdministrators(chatId);
-
-return admins.some(a=>a.user.id===userId);
-
+async function isAdmin(chatId, userId) {
+  const admins = await bot.getChatAdministrators(chatId);
+  return admins.some((a) => a.user.id === userId);
 }
 
-bot.onText(/\/start/,(msg)=>{
+bot.onText(/\/start/, async (msg) => {
+  const chatId = msg.chat.id;
 
-const chatId = msg.chat.id;
+  if (msg.chat.type === "private") {
+    bot.sendPhoto(
+      chatId,
+      fs.createReadStream("./images/welcome.jpg"),
+      {
+        caption: `✨ *WELCOME TO THE ULTIMATE TRUTH & DARE BOT* ✨
 
-if(msg.chat.type === "private"){
+🎡 Spin the wheel and let fate decide  
+👥 Add your friends to the game  
+🏆 Random player selector  
 
-bot.sendPhoto(chatId,
-"https://in.pinterest.com/pin/anime-dpz-for-boys--590112357445192539/",
-{
-caption:
-`🤖 *Ultimate Truth & Dare Wheel Bot*
+🔥 Perfect for group fun & challenges!
 
-🎉 Make your group games more fun!
+━━━━━━━━━━━━━━
+*How To Play*
 
-🎡 Spin the wheel  
-👥 Add participants  
-🏆 Random turn selector`,
-parse_mode:"Markdown",
-reply_markup:{
-inline_keyboard:[
-[
-{text:"👑 Owner",url:OWNER}
-],
-[
-{text:"➕ Add To Your Group",
-url:`https://t.me/${BOT_USERNAME}?startgroup=true`}
-]
-]
-}
+1️⃣ Add the bot to your group  
+2️⃣ Type */run* to start game  
+3️⃣ Players click *Add Me*  
+4️⃣ Admin spins the wheel 🎡
+
+Let the chaos begin 😈`,
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "👑 Owner", url: OWNER }],
+            [
+              {
+                text: "➕ Add To Your Group",
+                url: `https://t.me/${BOT_USERNAME}?startgroup=true`,
+              },
+            ],
+            [{ text: "🎮 How To Play", callback_data: "help" }],
+          ],
+        },
+      }
+    );
+  }
 });
 
-}
+bot.onText(/\/run/, (msg) => {
+  const chatId = msg.chat.id;
 
+  games[chatId] = { participants: [] };
+
+  bot.sendMessage(
+    chatId,
+    `🎯 *WELCOME TO TRUTH & DARE GAME*
+
+Players click *Add Me* to join.`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "➕ Add Me", callback_data: "add" },
+            { text: "➖ Remove Me", callback_data: "remove" },
+          ],
+          [{ text: "👥 Participants", callback_data: "list" }],
+          [{ text: "🎡 Spin Wheel", callback_data: "spin" }],
+        ],
+      },
+    }
+  );
 });
 
-bot.onText(/\/run/,(msg)=>{
+bot.onText(/\/endgame/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
 
-const chatId = msg.chat.id;
+  if (!games[chatId]) {
+    return bot.sendMessage(chatId, "❌ No game running.");
+  }
 
-games[chatId] = {participants:[]};
+  const admin = await isAdmin(chatId, userId);
 
-bot.sendMessage(chatId,
-`🎯 *WELCOME TO TRUTH & DARE BOT*
+  if (!admin) {
+    return bot.sendMessage(chatId, "⚠ Only admins can end the game.");
+  }
 
-Add players and spin the wheel!`,
-{
-parse_mode:"Markdown",
-reply_markup:{
-inline_keyboard:[
-[
-{text:"➕ Add Me",callback_data:"add"},
-{text:"➖ Remove Me",callback_data:"remove"}
-],
-[
-{text:"👥 Participants",callback_data:"list"}
-],
-[
-{text:"🎡 Spin Wheel",callback_data:"spin"}
-]
-]
-}
+  delete games[chatId];
+
+  bot.sendMessage(chatId, "🛑 Game ended successfully.");
 });
 
-});
+bot.on("callback_query", async (q) => {
+  const chatId = q.message.chat.id;
+  const user = q.from;
 
-bot.onText(/\/endgame/,async(msg)=>{
+  if (q.data === "help") {
+    return bot.sendMessage(
+      chatId,
+      `🎮 *HOW TO PLAY*
 
-const chatId = msg.chat.id;
-const userId = msg.from.id;
+1️⃣ Add bot to group
+2️⃣ Type /run
+3️⃣ Players click ➕ Add Me
+4️⃣ Admin presses 🎡 Spin Wheel
 
-if(!games[chatId]){
-return bot.sendMessage(chatId,"❌ No game running.");
-}
+Use /endgame to stop the game`,
+      { parse_mode: "Markdown" }
+    );
+  }
 
-const admin = await isAdmin(chatId,userId);
+  if (!games[chatId]) return;
 
-if(!admin){
-return bot.sendMessage(chatId,"⚠ Only admins can end the game.");
-}
+  let players = games[chatId].participants;
 
-delete games[chatId];
+  if (q.data === "add") {
+    if (players.find((p) => p.id === user.id)) {
+      return bot.answerCallbackQuery(q.id, { text: "⚠ Already joined" });
+    }
 
-bot.sendMessage(chatId,"🛑 Game ended successfully.");
+    players.push({ id: user.id, name: user.first_name });
 
-});
-
-bot.on("callback_query",async(q)=>{
-
-const chatId = q.message.chat.id;
-const user = q.from;
-
-if(!games[chatId]) return;
-
-let players = games[chatId].participants;
-
-if(q.data==="add"){
-
-if(players.find(p=>p.id===user.id)){
-
-return bot.answerCallbackQuery(q.id,{text:"⚠ Already joined"});
-
-}
-
-players.push({id:user.id,name:user.first_name});
-
-bot.sendMessage(chatId,
-`✅ New participant added
+    bot.sendMessage(
+      chatId,
+      `✅ New participant added
 👤 ${user.first_name}
-🆔 ${user.id}`);
+🆔 ${user.id}`
+    );
+  }
 
-}
+  if (q.data === "remove") {
+    games[chatId].participants =
+      players.filter((p) => p.id !== user.id);
 
-if(q.data==="remove"){
+    bot.sendMessage(
+      chatId,
+      `❌ ${user.first_name} left the game`
+    );
+  }
 
-games[chatId].participants =
-players.filter(p=>p.id!==user.id);
+  if (q.data === "list") {
+    if (players.length === 0) {
+      return bot.sendMessage(chatId, "⚠ No participants yet");
+    }
 
-bot.sendMessage(chatId,
-`❌ ${user.first_name} left the game`);
+    let text = "👥 *Participants*\n\n";
 
-}
+    players.forEach((p, i) => {
+      text += `${i + 1}. ${p.name}\n`;
+    });
 
-if(q.data==="list"){
+    bot.sendMessage(chatId, text, { parse_mode: "Markdown" });
+  }
 
-if(players.length===0){
-return bot.sendMessage(chatId,"⚠ No participants yet");
-}
+  if (q.data === "spin") {
+    const admin = await isAdmin(chatId, user.id);
 
-let text="👥 *Participants*\n\n";
+    if (!admin) {
+      return bot.answerCallbackQuery(q.id, {
+        text: "⚠ Only admins can spin",
+        show_alert: true,
+      });
+    }
 
-players.forEach((p,i)=>{
-text+=`${i+1}. ${p.name}\n`
-});
+    if (players.length < 2) {
+      return bot.sendMessage(chatId, "⚠ Need at least 2 players");
+    }
 
-bot.sendMessage(chatId,text,{parse_mode:"Markdown"});
+    const winner =
+      players[Math.floor(Math.random() * players.length)];
 
-}
+    bot.sendAnimation(
+      chatId,
+      "https://media.giphy.com/media/l4FGuhL4U2WyjdkaY/giphy.gif"
+    );
 
-if(q.data==="spin"){
+    setTimeout(async () => {
+      const wheel = await generateWheel(players);
 
-const admin = await isAdmin(chatId,user.id);
-
-if(!admin){
-
-return bot.answerCallbackQuery(q.id,{
-text:"⚠ Only admins can spin",
-show_alert:true
-});
-
-}
-
-if(players.length<2){
-
-return bot.sendMessage(chatId,"⚠ Need at least 2 players");
-
-}
-
-const winner =
-players[Math.floor(Math.random()*players.length)];
-
-bot.sendAnimation(chatId,
-"https://media.giphy.com/media/l4FGuhL4U2WyjdkaY/giphy.gif");
-
-setTimeout(async()=>{
-
-const wheel = await generateWheel(players);
-
-bot.sendPhoto(chatId,wheel,{
-caption:`🎯 *${winner.name}'s Turn*`,
-parse_mode:"Markdown"
-});
-
-},3000)
-
-}
-
+      bot.sendPhoto(chatId, wheel, {
+        caption: `🎯 *${winner.name}'s Turn*`,
+        parse_mode: "Markdown",
+      });
+    }, 3000);
+  }
 });
