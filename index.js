@@ -167,6 +167,10 @@ parse_mode:"Markdown",
 reply_markup:{
 inline_keyboard:[
 [
+{text:"➕ Join Game",callback_data:"add"},
+{text:"➖ Leave",callback_data:"remove"}
+],
+[
 {text:"🎡 Spin",callback_data:"spin"}
 ],
 [
